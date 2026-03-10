@@ -105,7 +105,15 @@ function CourseCard({ course, onEnroll }) {
         <button
           className="btn-primary"
           style={{ width: "100%", marginTop: 14, padding: "10px" }}
-          onClick={() => onEnroll && onEnroll(course)}
+          // onClick={() => {
+          //   if (!user) {
+          //     setShowLogin(true); // prompt login if not authenticated
+          //   } else {
+          //     setSelectedCourse(course);
+          //     setShowPayment(true); // open payment modal
+          //   }
+          // }}
+          onClick={onEnroll}
         >
           Enroll Now
         </button>

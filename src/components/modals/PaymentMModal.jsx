@@ -1,23 +1,64 @@
-import React, { useState} from"react"
+import React, { useState } from "react";
 
-
-
-
-
-
-
+const API_URL = "http://localhost:4000/api";
 
 function PaymentModal({ course, onClose, onSuccess }) {
   const [step, setStep] = useState(1);
   const [card, setCard] = useState({ num: "", exp: "", cvv: "", name: "" });
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const set = (k) => (e) => setCard((p) => ({ ...p, [k]: e.target.value }));
 
-  const pay = () => {
-    setStep(2);
-    setTimeout(() => {
+  const pay = async () => {
+    // ─── Basic client-side validation ────────────────────────────────────
+    if (!card.name || !card.num || !card.exp || !card.cvv) {
+      setErr("Please fill in all card details.");
+      return;
+    }
+
+    setErr("");
+    setStep(2); // show processing screen
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setErr("You must be logged in to enroll.");
+        setStep(1);
+        return;
+      }
+
+      // ─── POST /api/payments/mock ──────────────────────────────────────
+      // Uses the mock endpoint which creates the payment + enrollment in one go
+      const res = await fetch(`${API_URL}/payments/mock`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ courseId: course._id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErr(data.message || "Payment failed. Please try again.");
+        setStep(1);
+        return;
+      }
+
+      // ─── Success ──────────────────────────────────────────────────────
       setStep(3);
-    }, 2000);
+    } catch (error) {
+      setErr("Network error. Please check your connection and try again.");
+      setStep(1);
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
@@ -41,20 +82,18 @@ function PaymentModal({ course, onClose, onSuccess }) {
           ×
         </button>
 
+        {/* ─── Step 1: Card Form ─────────────────────────────────────────── */}
         {step === 1 && (
           <>
             <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>
               Complete Enrollment
             </h2>
             <p
-              style={{
-                color: "var(--muted)",
-                fontSize: 14,
-                marginBottom: 20,
-              }}
+              style={{ color: "var(--muted)", fontSize: 14, marginBottom: 20 }}
             >
               Secure checkout — 256-bit SSL encrypted
             </p>
+
             <div
               style={{
                 background: "var(--ivory)",
@@ -85,6 +124,23 @@ function PaymentModal({ course, onClose, onSuccess }) {
                 ${course.price}
               </div>
             </div>
+
+            {err && (
+              <div
+                style={{
+                  background: "#fff0ee",
+                  border: "1px solid #ffccbc",
+                  borderRadius: 6,
+                  padding: "10px 14px",
+                  marginBottom: 16,
+                  color: "#c62828",
+                  fontSize: 13,
+                }}
+              >
+                {err}
+              </div>
+            )}
+
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <input
                 placeholder="Cardholder Name"
@@ -118,6 +174,7 @@ function PaymentModal({ course, onClose, onSuccess }) {
                 />
               </div>
             </div>
+
             <button
               className="btn-primary"
               style={{
@@ -130,6 +187,7 @@ function PaymentModal({ course, onClose, onSuccess }) {
             >
               Pay ${course.price} Securely 🔒
             </button>
+
             <div
               style={{
                 display: "flex",
@@ -157,17 +215,10 @@ function PaymentModal({ course, onClose, onSuccess }) {
           </>
         )}
 
+        {/* ─── Step 2: Processing ───────────────────────────────────────────── */}
         {step === 2 && (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <div
-              style={{
-                fontSize: 48,
-                marginBottom: 16,
-                animation: "spin 1s linear infinite",
-              }}
-            >
-              ⏳
-            </div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
             <h3 style={{ fontSize: 24 }}>Processing Payment…</h3>
             <p style={{ color: "var(--muted)", marginTop: 8 }}>
               Please wait while we confirm your transaction.
@@ -175,6 +226,7 @@ function PaymentModal({ course, onClose, onSuccess }) {
           </div>
         )}
 
+        {/* ─── Step 3: Success ─────────────────────────────────────────────── */}
         {step === 3 && (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <div style={{ fontSize: 64, marginBottom: 12 }}>✅</div>
@@ -182,11 +234,7 @@ function PaymentModal({ course, onClose, onSuccess }) {
               Payment Successful!
             </h3>
             <p
-              style={{
-                color: "var(--muted)",
-                fontSize: 15,
-                marginBottom: 28,
-              }}
+              style={{ color: "var(--muted)", fontSize: 15, marginBottom: 28 }}
             >
               You're now enrolled in <strong>{course.title}</strong>. Let's
               start learning!
@@ -205,6 +253,4 @@ function PaymentModal({ course, onClose, onSuccess }) {
   );
 }
 
-
-
-export default PaymentModal
+export default PaymentModal;

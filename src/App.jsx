@@ -1,43 +1,78 @@
-import { useState } from 'react'
+import { useState } from "react";
 
+import HomePage from "./pages/HomePage";
+import LoginModal from "./components/modals/LoginModal";
+import RegisterModal from "./components/modals/RegisterModal";
+import PaymentModal from "./components/modals/PaymentMModal";
+import AboutPage from "./pages/AboutPage";
+import Dashboard from "./pages/Dashboard";
+import CoursePage from "./pages/CoursePage";
+import Navbar from "./shared/Navbar";
 
-import HomePage from './pages/HomePage'
-import LoginModal from './components/modals/LoginModal'
-import RegisterModal from './components/modals/RegisterModal'
-import PaymentModal from './components/modals/PaymentMModal'
-import AboutPage from './pages/AboutPage'
-import Dashboard from './pages/Dashboard'
-import CoursePage from './pages/CoursePage'
-import Navbar from './shared/Navbar'
+import { css } from "./utils/MockData";
 
-import { css } from './utils/MockData'
-
-
-
+const API_URL = "http://localhost:4000/api";
 
 function App() {
-   const [page, setPage] = useState("home");
-   const [user, setUser] = useState(null);
-   const [showLogin, setShowLogin] = useState(false);
-   const [showRegister, setShowRegister] = useState(false);
-   const [paymentCourse, setPaymentCourse] = useState(null);
+  const [page, setPage] = useState("home");
+  const [user, setUser] = useState(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [paymentCourse, setPaymentCourse] = useState(null);
 
-   const login = (u) => {
-     setUser(u);
-     setShowLogin(false);
-     setShowRegister(false);
-   };
-   const logout = () => {
-     setUser(null);
-     setPage("home");
-   };
-   const onEnroll = (course) => {
-     if (!user) {
-       setShowRegister(true);
-       return;
-     }
-     setPaymentCourse(course);
-   };
+  // ─── Check if user already has enrollments (called after login/register) ──
+  const checkEnrollments = async (u, token) => {
+    try {
+      const res = await fetch(`${API_URL}/enrollments/my`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.data.enrollments.length > 0) {
+        return { ...u, hasEnrollment: true };
+      }
+    } catch (_) {}
+    return { ...u, hasEnrollment: false };
+  };
+
+  // ─── Called after both login AND register ────────────────────────────────
+  const login = async (u) => {
+    const token = localStorage.getItem("token");
+    const enrichedUser = await checkEnrollments(u, token);
+    setUser(enrichedUser);
+    setShowLogin(false);
+    setShowRegister(false);
+
+    // If they were mid-enroll before auth, resume payment
+    const pending = sessionStorage.getItem("pendingCourse");
+    if (pending) {
+      setPaymentCourse(JSON.parse(pending));
+      sessionStorage.removeItem("pendingCourse");
+    }
+    // No auto-redirect to dashboard
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("token");
+    setPage("home");
+  };
+
+  // ─── Enroll: require auth first, then open payment ───────────────────────
+  const onEnroll = (course) => {
+    if (!user) {
+      sessionStorage.setItem("pendingCourse", JSON.stringify(course));
+      setShowRegister(true);
+      return;
+    }
+    setPaymentCourse(course);
+  };
+
+  // ─── After successful payment, mark user as having enrollment ────────────
+  const onPaymentSuccess = () => {
+    setUser((prev) => ({ ...prev, hasEnrollment: true }));
+    setPaymentCourse(null);
+    setPage("dashboard");
+  };
 
   return (
     <>
@@ -52,18 +87,32 @@ function App() {
       />
 
       {page === "home" && (
-        <HomePage setPage={setPage} setShowRegister={setShowRegister} />
+        <HomePage setPage={setPage} setShowRegister={setShowRegister} onEnroll={onEnroll}/>
       )}
       {page === "courses" && (
         <CoursePage
           setShowRegister={setShowRegister}
           user={user}
           setPage={setPage}
+          onEnroll={onEnroll}
         />
       )}
       {page === "about" && <AboutPage setShowRegister={setShowRegister} />}
-      {page === "dashboard" && user && (
-        <Dashboard user={user} setPage={setPage} />
+      {page === "dashboard" && user && user.hasEnrollment && (
+        <Dashboard user={user} setPage={setPage} logout={logout} />
+      )}
+      {page === "dashboard" && user && !user.hasEnrollment && (
+        <div style={{ textAlign: "center", padding: "80px 40px" }}>
+          <h2 style={{ fontSize: 36, marginBottom: 16 }}>
+            You have no enrollments yet
+          </h2>
+          <p style={{ color: "var(--muted)", marginBottom: 28 }}>
+            Enroll in a course to access your dashboard.
+          </p>
+          <button className="btn-primary" onClick={() => setPage("courses")}>
+            Browse Courses
+          </button>
+        </div>
       )}
       {page === "dashboard" && !user && (
         <div style={{ textAlign: "center", padding: "80px 40px" }}>
@@ -100,14 +149,11 @@ function App() {
         <PaymentModal
           course={paymentCourse}
           onClose={() => setPaymentCourse(null)}
-          onSuccess={() => {
-            setPaymentCourse(null);
-            setPage("dashboard");
-          }}
+          onSuccess={onPaymentSuccess}
         />
       )}
     </>
   );
 }
 
-export default App
+export default App;

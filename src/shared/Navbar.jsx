@@ -1,7 +1,5 @@
-import React from "react"
-
-
-
+import React from "react";
+import Avatar from "../shared/Avatar";
 
 function Navbar({
   page,
@@ -10,6 +8,7 @@ function Navbar({
   setShowLogin,
   setShowRegister,
   logout,
+  onEnroll,
 }) {
   return (
     <nav
@@ -61,6 +60,7 @@ function Navbar({
           </div>
         </div>
       </div>
+
       <div style={{ display: "flex", gap: 32 }}>
         {["home", "courses", "about"].map((p) => (
           <span
@@ -76,6 +76,7 @@ function Navbar({
           </span>
         ))}
       </div>
+
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         {user ? (
           <>
@@ -83,13 +84,16 @@ function Navbar({
             <span style={{ color: "#fff", fontSize: 14, fontWeight: 500 }}>
               {user.name.split(" ")[0]}
             </span>
-            <button
-              className="btn-primary"
-              style={{ padding: "7px 16px", fontSize: 13 }}
-              onClick={() => setPage("dashboard")}
-            >
-              Dashboard
-            </button>
+            {/* Only show Dashboard if user has enrollments */}
+            {user.hasEnrollment && (
+              <button
+                className="btn-primary"
+                style={{ padding: "7px 16px", fontSize: 13 }}
+                onClick={() => setPage("dashboard")}
+              >
+                Dashboard
+              </button>
+            )}
             <button
               className="btn-outline"
               style={{
@@ -130,6 +134,5 @@ function Navbar({
     </nav>
   );
 }
-
 
 export default Navbar;

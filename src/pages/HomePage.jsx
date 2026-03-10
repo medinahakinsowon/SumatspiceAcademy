@@ -17,7 +17,7 @@ import { STATS, TESTIMONIALS, COURSES } from "../utils/MockData";
 
 
 
-function HomePage({ setPage, setShowRegister }) {
+function HomePage({ setPage, setShowRegister, onEnroll }) {
   return (
     <div>
       {/* Hero */}
@@ -467,7 +467,7 @@ function HomePage({ setPage, setShowRegister }) {
             }}
           >
             {COURSES.slice(0, 3).map((c) => (
-              <CourseCard key={c.id} course={c} setPage={() => {}} />
+              <CourseCard key={c._id} course={c} onEnroll={() => onEnroll(c)} />
             ))}
           </div>
           <div style={{ textAlign: "center", marginTop: 40 }}>
@@ -723,7 +723,7 @@ function HomePage({ setPage, setShowRegister }) {
       </div>
 
       {/* Footer */}
-      <Footer/>
+      <Footer />
     </div>
   );
 }

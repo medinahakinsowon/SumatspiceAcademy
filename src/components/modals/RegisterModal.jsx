@@ -1,23 +1,58 @@
+import React, { useState } from "react";
 
-
-
-import React, { useState } from "react"
-
-
-
+const API_URL = "http://localhost:4000/api";
 
 function RegisterModal({ onClose, onRegister, switchToLogin }) {
   const [form, setForm] = useState({ name: "", email: "", pass: "" });
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
-  const handle = () => {
+  const handle = async () => {
+    // ─── Client-side validation ───────────────────────────────────────────
     if (!form.name || !form.email || !form.pass) {
       setErr("Please fill in all fields.");
       return;
     }
-    onRegister(form);
+    if (form.pass.length < 6) {
+      setErr("Password must be at least 6 characters.");
+      return;
+    }
+
+    setErr("");
+    setLoading(true);
+
+    try {
+      // ─── POST /api/auth/register ────────────────────────────────────────
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.pass,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Server returned a validation or conflict error
+        setErr(data.message || "Registration failed. Please try again.");
+        return;
+      }
+
+      // ─── Success — store token and pass user up ─────────────────────────
+      localStorage.setItem("token", data.token);
+      onRegister(data.data.user);
+    } catch (error) {
+      setErr("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
@@ -36,6 +71,7 @@ function RegisterModal({ onClose, onRegister, switchToLogin }) {
         >
           ×
         </button>
+
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <span style={{ fontSize: 36 }}>🌿</span>
           <h2 style={{ fontSize: 32, fontWeight: 700, marginTop: 6 }}>
@@ -45,6 +81,7 @@ function RegisterModal({ onClose, onRegister, switchToLogin }) {
             Join 8,400+ spice learners
           </p>
         </div>
+
         {err && (
           <div
             style={{
@@ -60,6 +97,7 @@ function RegisterModal({ onClose, onRegister, switchToLogin }) {
             {err}
           </div>
         )}
+
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label
@@ -76,8 +114,10 @@ function RegisterModal({ onClose, onRegister, switchToLogin }) {
               placeholder="Adaeze Okonkwo"
               value={form.name}
               onChange={set("name")}
+              disabled={loading}
             />
           </div>
+
           <div>
             <label
               style={{
@@ -94,8 +134,10 @@ function RegisterModal({ onClose, onRegister, switchToLogin }) {
               placeholder="your@email.com"
               value={form.email}
               onChange={set("email")}
+              disabled={loading}
             />
           </div>
+
           <div>
             <label
               style={{
@@ -109,20 +151,28 @@ function RegisterModal({ onClose, onRegister, switchToLogin }) {
             </label>
             <input
               type="password"
-              placeholder="Min. 8 characters"
+              placeholder="Min. 6 characters"
               value={form.pass}
               onChange={set("pass")}
               onKeyDown={(e) => e.key === "Enter" && handle()}
+              disabled={loading}
             />
           </div>
+
           <button
             className="btn-primary"
-            style={{ marginTop: 6, padding: "13px" }}
+            style={{
+              marginTop: 6,
+              padding: "13px",
+              opacity: loading ? 0.7 : 1,
+            }}
             onClick={handle}
+            disabled={loading}
           >
-            Create Account →
+            {loading ? "Creating Account..." : "Create Account →"}
           </button>
         </div>
+
         <p
           style={{
             textAlign: "center",
@@ -147,7 +197,5 @@ function RegisterModal({ onClose, onRegister, switchToLogin }) {
     </div>
   );
 }
-
-
 
 export default RegisterModal;
