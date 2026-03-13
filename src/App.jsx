@@ -8,6 +8,7 @@ import AboutPage from "./pages/AboutPage";
 import Dashboard from "./pages/Dashboard";
 import CoursePage from "./pages/CoursePage";
 import Navbar from "./shared/Navbar";
+import CoursePlayer from "./pages/CoursePlayer";
 
 import { css } from "./utils/MockData";
 
@@ -19,6 +20,7 @@ function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [paymentCourse, setPaymentCourse] = useState(null);
+  const [activeEnroll, setActiveEnroll] = useState(null)
 
   // ─── Check if user already has enrollments (called after login/register) ──
   const checkEnrollments = async (u, token) => {
@@ -50,6 +52,11 @@ function App() {
     }
     // No auto-redirect to dashboard
   };
+
+    const openPlayer = (enrollment) => {
+      setActiveEnroll(enrollment);
+      setPage("player");
+    };
 
   const logout = () => {
     setUser(null);
@@ -87,7 +94,11 @@ function App() {
       />
 
       {page === "home" && (
-        <HomePage setPage={setPage} setShowRegister={setShowRegister} onEnroll={onEnroll}/>
+        <HomePage
+          setPage={setPage}
+          setShowRegister={setShowRegister}
+          onEnroll={onEnroll}
+        />
       )}
       {page === "courses" && (
         <CoursePage
@@ -99,7 +110,12 @@ function App() {
       )}
       {page === "about" && <AboutPage setShowRegister={setShowRegister} />}
       {page === "dashboard" && user && user.hasEnrollment && (
-        <Dashboard user={user} setPage={setPage} logout={logout} />
+        <Dashboard
+          user={user}
+          setPage={setPage}
+          logout={logout}
+          openPlayer={openPlayer}
+        />
       )}
       {page === "dashboard" && user && !user.hasEnrollment && (
         <div style={{ textAlign: "center", padding: "80px 40px" }}>
@@ -123,6 +139,14 @@ function App() {
             Sign In
           </button>
         </div>
+      )}
+
+      {page === "player" && (
+        <CoursePlayer
+          enrollment={activeEnroll}
+          user={user}
+          setPage={setPage}
+        />
       )}
 
       {showLogin && (

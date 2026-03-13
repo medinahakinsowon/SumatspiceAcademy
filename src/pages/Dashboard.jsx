@@ -3,7 +3,7 @@ import Avatar from "../shared/Avatar";
 
 const API_URL = "http://localhost:4000/api";
 
-function Dashboard({ user, setPage, logout }) {
+function Dashboard({ user, setPage, logout, openPlayer }) {
   const [active, setActive] = useState("overview");
   const [enrollments, setEnrollments] = useState([]);
   const [stats, setStats] = useState(null);
@@ -277,6 +277,7 @@ function Dashboard({ user, setPage, logout }) {
                       <button
                         className="btn-primary"
                         style={{ padding: "7px 14px", fontSize: 12 }}
+                        onClick={() => openPlayer(e)}
                       >
                         Resume
                       </button>
@@ -405,6 +406,7 @@ function Dashboard({ user, setPage, logout }) {
                         <button
                           className="btn-primary"
                           style={{ width: "100%", padding: "10px" }}
+                          onClick={() => openPlayer(e)}
                         >
                           Continue Learning →
                         </button>
