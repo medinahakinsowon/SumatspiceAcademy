@@ -1,23 +1,42 @@
-import React from "react"
-
-
-
+import React, { useState, useEffect } from "react";
 import Footer from "../shared/Footer";
-
 import CourseCard from "../components/CourseCard";
-
-
 import Avatar from "../shared/Avatar";
+import { STATS, TESTIMONIALS } from "../utils/MockData";
 
-
-import { STATS, TESTIMONIALS, COURSES } from "../utils/MockData";
-
-
-
-
-
+const API_URL = "http://localhost:4000/api";
 
 function HomePage({ setPage, setShowRegister, onEnroll }) {
+  const [featuredCourses, setFeaturedCourses] = useState([]);
+
+  // ─── Fetch real featured courses from DB ─────────────────────────────────
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const res = await fetch(`${API_URL}/courses?isFeatured=true&limit=3`);
+        const data = await res.json();
+        if (res.ok) {
+          const mapped = data.data.courses.slice(0, 3).map((c) => ({
+            _id: c._id || c.id,
+            title: c.title,
+            desc: c.shortDesc || c.description,
+            thumb: c.thumbnail,
+            price: c.price,
+            level: c.level,
+            tags: c.tags || [],
+            lessons: c.totalLessons,
+            duration: c.totalDuration
+              ? `${Math.round(c.totalDuration / 3600)}h`
+              : "Self-paced",
+            rating: c.rating?.average || 0,
+          }));
+          setFeaturedCourses(mapped);
+        }
+      } catch (_) {}
+    };
+    fetchFeatured();
+  }, []);
+
   return (
     <div>
       {/* Hero */}
@@ -32,7 +51,6 @@ function HomePage({ setPage, setShowRegister, onEnroll }) {
             "linear-gradient(135deg, #1a3429 0%, var(--forest) 40%, #2d3d1e 100%)",
         }}
       >
-        {/* Background texture */}
         <div
           style={{
             position: "absolute",
@@ -43,7 +61,6 @@ function HomePage({ setPage, setShowRegister, onEnroll }) {
             opacity: 0.15,
           }}
         />
-        {/* Decorative circles */}
         <div
           style={{
             position: "absolute",
@@ -68,7 +85,6 @@ function HomePage({ setPage, setShowRegister, onEnroll }) {
             pointerEvents: "none",
           }}
         />
-
         <div
           style={{
             position: "relative",
@@ -295,48 +311,25 @@ function HomePage({ setPage, setShowRegister, onEnroll }) {
                 gap: 12,
               }}
             >
-              <img
-                src="https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=400&q=80"
-                alt=""
-                style={{
-                  borderRadius: 12,
-                  width: "100%",
-                  height: 220,
-                  objectFit: "cover",
-                }}
-              />
-              <img
-                src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400&q=80"
-                alt=""
-                style={{
-                  borderRadius: 12,
-                  width: "100%",
-                  height: 220,
-                  objectFit: "cover",
-                  marginTop: 24,
-                }}
-              />
-              <img
-                src="https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=400&q=80"
-                alt=""
-                style={{
-                  borderRadius: 12,
-                  width: "100%",
-                  height: 220,
-                  objectFit: "cover",
-                }}
-              />
-              <img
-                src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80"
-                alt=""
-                style={{
-                  borderRadius: 12,
-                  width: "100%",
-                  height: 220,
-                  objectFit: "cover",
-                  marginTop: 24,
-                }}
-              />
+              {[
+                "photo-1615485500704-8e990f9900f7",
+                "photo-1464226184884-fa280b87c399",
+                "photo-1608571423902-eed4a5ad8108",
+                "photo-1542838132-92c53300491e",
+              ].map((p, i) => (
+                <img
+                  key={p}
+                  src={`https://images.unsplash.com/${p}?w=400&q=80`}
+                  alt=""
+                  style={{
+                    borderRadius: 12,
+                    width: "100%",
+                    height: 220,
+                    objectFit: "cover",
+                    marginTop: i % 2 === 1 ? 24 : 0,
+                  }}
+                />
+              ))}
             </div>
           </div>
           <div>
@@ -466,15 +459,38 @@ function HomePage({ setPage, setShowRegister, onEnroll }) {
               gap: 24,
             }}
           >
-            {COURSES.slice(0, 3).map((c) => (
-              <CourseCard key={c._id} course={c} onEnroll={() => onEnroll(c)} />
-            ))}
+            {featuredCourses.length === 0
+              ? [1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 12,
+                      height: 320,
+                      border: "1px solid var(--border)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                      Loading…
+                    </span>
+                  </div>
+                ))
+              : featuredCourses.map((c) => (
+                  <CourseCard
+                    key={c._id}
+                    course={c}
+                    onEnroll={() => onEnroll(c)}
+                  />
+                ))}
           </div>
           <div style={{ textAlign: "center", marginTop: 40 }}>
             <button
               className="btn-forest"
               style={{ padding: "13px 40px", fontSize: 15 }}
-              onClick={() => setPage && setPage("courses")}
+              onClick={() => setPage("courses")}
             >
               View All Courses →
             </button>
@@ -722,13 +738,9 @@ function HomePage({ setPage, setShowRegister, onEnroll }) {
         </button>
       </div>
 
-      {/* Footer */}
       <Footer />
     </div>
   );
 }
-
-
-
 
 export default HomePage;

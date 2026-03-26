@@ -8,8 +8,8 @@ function Navbar({
   setShowLogin,
   setShowRegister,
   logout,
-  onEnroll,
 }) {
+  const firstName = user?.name?.split(" ")?.[0] || "User";
   return (
     <nav
       style={{
@@ -82,10 +82,28 @@ function Navbar({
           <>
             <Avatar name={user.name} size={34} />
             <span style={{ color: "#fff", fontSize: 14, fontWeight: 500 }}>
-              {user.name.split(" ")[0]}
+              {/* //optional chaining */}
+              {firstName}
             </span>
-            {/* Only show Dashboard if user has enrollments */}
-            {user.hasEnrollment && (
+
+            {/* Admin button */}
+            {user.role === "admin" && (
+              <button
+                className="btn-outline"
+                style={{
+                  padding: "7px 16px",
+                  fontSize: 13,
+                  borderColor: "rgba(255,200,100,0.5)",
+                  color: "rgba(255,200,100,0.9)",
+                }}
+                onClick={() => setPage("admin")}
+              >
+                ⚙️ Admin
+              </button>
+            )}
+
+            {/* Dashboard — only if enrolled */}
+            {user.hasEnrollment && user.role !== "admin" && (
               <button
                 className="btn-primary"
                 style={{ padding: "7px 16px", fontSize: 13 }}
@@ -94,6 +112,7 @@ function Navbar({
                 Dashboard
               </button>
             )}
+
             <button
               className="btn-outline"
               style={{

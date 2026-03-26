@@ -1,28 +1,69 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import HomePage from "./pages/HomePage";
 import LoginModal from "./components/modals/LoginModal";
 import RegisterModal from "./components/modals/RegisterModal";
-import PaymentModal from "./components/modals/PaymentMModal";
+import PaymentModal from "./components/modals/PaymentModal";
 import AboutPage from "./pages/AboutPage";
 import Dashboard from "./pages/Dashboard";
 import CoursePage from "./pages/CoursePage";
-import Navbar from "./shared/Navbar";
 import CoursePlayer from "./pages/CoursePlayer";
+import AdminPanel from "./pages/AdminPanel";
+import Navbar from "./shared/Navbar";
 
 import { css } from "./utils/MockData";
 
 const API_URL = "http://localhost:4000/api";
 
 function App() {
-  const [page, setPage] = useState("home");
   const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true); // prevent flash of logged-out state
+  const [page, setPage] = useState("home");
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [paymentCourse, setPaymentCourse] = useState(null);
-  const [activeEnroll, setActiveEnroll] = useState(null)
+  const [activeEnrollment, setActiveEnrollment] = useState(null);
 
-  // ─── Check if user already has enrollments (called after login/register) ──
+  // ─── On mount: restore session from token in localStorage ────────────────
+  useEffect(() => {
+    const restoreSession = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch fresh user data from DB
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+
+        if (res.ok && data.data?.user) {
+          // Also check enrollments so hasEnrollment is correct
+          const enrollRes = await fetch(`${API_URL}/enrollments/my`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const enrollData = await enrollRes.json();
+          const hasEnrollment =
+            enrollRes.ok && enrollData.data.enrollments.length > 0;
+          setUser({ ...data.data.user, hasEnrollment });
+        } else {
+          // Token is invalid or expired — clear it
+          localStorage.removeItem("token");
+        }
+      } catch (_) {
+        localStorage.removeItem("token");
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
+
+  // ─── Check enrollments after login/register ───────────────────────────────
   const checkEnrollments = async (u, token) => {
     try {
       const res = await fetch(`${API_URL}/enrollments/my`, {
@@ -36,7 +77,6 @@ function App() {
     return { ...u, hasEnrollment: false };
   };
 
-  // ─── Called after both login AND register ────────────────────────────────
   const login = async (u) => {
     const token = localStorage.getItem("token");
     const enrichedUser = await checkEnrollments(u, token);
@@ -44,19 +84,12 @@ function App() {
     setShowLogin(false);
     setShowRegister(false);
 
-    // If they were mid-enroll before auth, resume payment
     const pending = sessionStorage.getItem("pendingCourse");
     if (pending) {
       setPaymentCourse(JSON.parse(pending));
       sessionStorage.removeItem("pendingCourse");
     }
-    // No auto-redirect to dashboard
   };
-
-    const openPlayer = (enrollment) => {
-      setActiveEnroll(enrollment);
-      setPage("player");
-    };
 
   const logout = () => {
     setUser(null);
@@ -64,8 +97,8 @@ function App() {
     setPage("home");
   };
 
-  // ─── Enroll: require auth first, then open payment ───────────────────────
   const onEnroll = (course) => {
+    console.log(course);
     if (!user) {
       sessionStorage.setItem("pendingCourse", JSON.stringify(course));
       setShowRegister(true);
@@ -74,12 +107,77 @@ function App() {
     setPaymentCourse(course);
   };
 
-  // ─── After successful payment, mark user as having enrollment ────────────
-  const onPaymentSuccess = () => {
-    setUser((prev) => ({ ...prev, hasEnrollment: true }));
+  // const onPaymentSuccess = () => {
+  //   setUser((prev) => ({ ...prev, hasEnrollment: true }));
+  //   setPaymentCourse(null);
+  //   setPage("dashboard");
+  // };
+  // Replace onPaymentSuccess in App.jsx with this:
+
+  const onPaymentSuccess = async () => {
     setPaymentCourse(null);
+
+    // Re-fetch fresh user + enrollments from DB
+    const token = localStorage.getItem("token");
+    try {
+      const [userRes, enrollRes] = await Promise.all([
+        fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/enrollments/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const userData = await userRes.json();
+      const enrollData = await enrollRes.json();
+
+      if (userRes.ok && userData.data?.user) {
+        const hasEnrollment =
+          enrollRes.ok && enrollData.data.enrollments.length > 0;
+        setUser({ ...userData.data.user, hasEnrollment });
+      }
+    } catch (_) {
+      // Fallback — just set flag manually
+      setUser((prev) => ({ ...prev, hasEnrollment: true }));
+    }
+
     setPage("dashboard");
   };
+
+  const openPlayer = (enrollment) => {
+    setActiveEnrollment(enrollment);
+    setPage("player");
+  };
+
+  // ─── Don't render anything until we know if user is logged in ────────────
+  if (authLoading) {
+    return (
+      <>
+        <style>{css}</style>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100vh",
+            background: "var(--cream)",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🌿</div>
+            <p
+              style={{
+                color: "var(--muted)",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              Loading…
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -109,6 +207,7 @@ function App() {
         />
       )}
       {page === "about" && <AboutPage setShowRegister={setShowRegister} />}
+
       {page === "dashboard" && user && user.hasEnrollment && (
         <Dashboard
           user={user}
@@ -140,10 +239,10 @@ function App() {
           </button>
         </div>
       )}
-
+      {page === "admin" && <AdminPanel user={user} setPage={setPage} />}
       {page === "player" && (
         <CoursePlayer
-          enrollment={activeEnroll}
+          enrollment={activeEnrollment}
           user={user}
           setPage={setPage}
         />
@@ -172,6 +271,7 @@ function App() {
       {paymentCourse && (
         <PaymentModal
           course={paymentCourse}
+          user={user}
           onClose={() => setPaymentCourse(null)}
           onSuccess={onPaymentSuccess}
         />

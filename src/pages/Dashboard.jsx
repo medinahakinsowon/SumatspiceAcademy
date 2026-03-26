@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import Avatar from "../shared/Avatar";
 
+import CertificateView from "../components/CertificateView"
+
 const API_URL = "http://localhost:4000/api";
 
 function Dashboard({ user, setPage, logout, openPlayer }) {
@@ -15,6 +17,8 @@ function Dashboard({ user, setPage, logout, openPlayer }) {
   });
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
+  const [viewingCert, setViewingCert] = useState(null);
+  const [certificates, setCertificates] = useState([]);
   const fileRef = useRef();
 
   // ─── Fetch real enrollments + stats from backend ─────────────────────────
@@ -32,6 +36,11 @@ function Dashboard({ user, setPage, logout, openPlayer }) {
           }),
         ]);
         const enrollData = await enrollRes.json();
+        const certRes = await fetch(`${API_URL}/certificates/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const certData = await certRes.json();
+        if (certRes.ok) setCertificates(certData.data.certificates);
         const statsData = await statsRes.json();
         if (enrollRes.ok) setEnrollments(enrollData.data.enrollments);
         if (statsRes.ok) setStats(statsData.data);
@@ -483,9 +492,10 @@ function Dashboard({ user, setPage, logout, openPlayer }) {
                 My Certificates
               </h2>
               <p style={{ color: "var(--muted)", marginBottom: 32 }}>
-                Complete a course to earn your certificate.
+                Certificates are issued by the admin after course review.
               </p>
-              {enrollments.filter((e) => e.certificateIssued).length === 0 ? (
+
+              {certificates.length === 0 ? (
                 <div
                   style={{
                     background: "#fff",
@@ -502,7 +512,8 @@ function Dashboard({ user, setPage, logout, openPlayer }) {
                     No Certificates Yet
                   </h3>
                   <p style={{ color: "var(--muted)", marginBottom: 24 }}>
-                    Finish your enrolled courses to unlock certificates.
+                    Complete your enrolled courses and an admin will review and
+                    issue your certificate.
                   </p>
                   <button
                     className="btn-primary"
@@ -512,28 +523,109 @@ function Dashboard({ user, setPage, logout, openPlayer }) {
                   </button>
                 </div>
               ) : (
-                enrollments
-                  .filter((e) => e.certificateIssued)
-                  .map((e) => (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(2, 1fr)",
+                    gap: 24,
+                  }}
+                >
+                  {certificates.map((cert) => (
                     <div
-                      key={e._id}
+                      key={cert._id}
                       style={{
-                        background: "#fff",
+                        background: "linear-gradient(135deg, #fffdf4, #fdf8ee)",
+                        border: "2px solid #c9a84c",
                         borderRadius: 12,
-                        padding: 24,
-                        border: "1px solid var(--border)",
-                        marginBottom: 16,
+                        padding: 28,
+                        position: "relative",
+                        overflow: "hidden",
                       }}
                     >
-                      <h3 style={{ fontSize: 20, fontWeight: 700 }}>
-                        🏆 {e.course?.title}
+                      {/* Gold accent */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          background:
+                            "linear-gradient(90deg, #c9a84c, #e8d5a0, #c9a84c)",
+                        }}
+                      />
+                      <div style={{ fontSize: 36, marginBottom: 12 }}>🏆</div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#8a6d2e",
+                          textTransform: "uppercase",
+                          letterSpacing: 2,
+                          marginBottom: 6,
+                        }}
+                      >
+                        Certificate of Completion
+                      </div>
+                      <h3
+                        style={{
+                          fontSize: 20,
+                          fontWeight: 700,
+                          marginBottom: 4,
+                          color: "#1a1a1a",
+                        }}
+                      >
+                        {cert.course?.title}
                       </h3>
-                      <p style={{ color: "var(--muted)", marginTop: 4 }}>
-                        Certificate earned on{" "}
-                        {new Date(e.completedAt).toLocaleDateString()}
-                      </p>
+                      <div
+                        style={{
+                          color: "var(--muted)",
+                          fontSize: 13,
+                          marginBottom: 16,
+                        }}
+                      >
+                        Issued:{" "}
+                        {new Date(cert.issuedAt).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "monospace",
+                          fontSize: 12,
+                          color: "#8a6d2e",
+                          background: "rgba(201,168,76,0.1)",
+                          padding: "4px 10px",
+                          borderRadius: 4,
+                          display: "inline-block",
+                          marginBottom: 20,
+                          letterSpacing: 1,
+                        }}
+                      >
+                        {cert.certificateId}
+                      </div>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button
+                          className="btn-primary"
+                          style={{ flex: 1, padding: "10px" }}
+                          onClick={() => setViewingCert(cert)}
+                        >
+                          View Certificate
+                        </button>
+                      </div>
                     </div>
-                  ))
+                  ))}
+                </div>
+              )}
+
+              {/* Certificate modal */}
+              {viewingCert && (
+                <CertificateView
+                  certificate={viewingCert}
+                  onClose={() => setViewingCert(null)}
+                />
               )}
             </>
           )}

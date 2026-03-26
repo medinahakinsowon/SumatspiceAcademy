@@ -8,6 +8,7 @@ function CoursePlayer({ enrollment, user, setPage }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(new Set());
+  const [progressPercent, setProgressPercent] = useState(0);
   const videoRef = useRef();
 
   const course = enrollment?.course;
@@ -27,6 +28,17 @@ function CoursePlayer({ enrollment, user, setPage }) {
         const vids = data.data.videos;
         setVideos(vids);
         setActiveVideo(vids[0] || null);
+
+        // Pre-mark already completed lessons from enrollment data
+        if (enrollment?.lessonProgress?.length) {
+          const doneIds = new Set(
+            enrollment.lessonProgress
+              .filter((p) => p.completed)
+              .map((p) => p.video?.toString()),
+          );
+          setCompleted(doneIds);
+          setProgressPercent(enrollment.progressPercent || 0);
+        }
       } catch (err) {
         setError("Could not load videos. Please try again.");
       } finally {
@@ -36,13 +48,54 @@ function CoursePlayer({ enrollment, user, setPage }) {
     fetchVideos();
   }, [course?._id]);
 
-  // ─── Mark lesson complete when video ends ─────────────────────────────────
+  // ─── Save progress to DB ──────────────────────────────────────────────────
+  const markCompleteInDB = async (videoId) => {
+    // Update local state immediately for instant UI feedback
+    setCompleted((prev) => new Set([...prev, videoId]));
+
+    try {
+      const token = localStorage.getItem("token");
+      const watchedSecs = videoRef.current
+        ? Math.floor(videoRef.current.currentTime)
+        : 0;
+
+      const res = await fetch(`${API_URL}/videos/${videoId}/complete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ watchedSecs }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        // Update progress percent from DB response
+        setProgressPercent(data.data.progressPercent);
+      }
+    } catch (_) {
+      // Silently fail — local state already updated
+    }
+  };
+
+  // ─── When video ends: save to DB + auto-advance ───────────────────────────
   const handleVideoEnd = async () => {
     if (!activeVideo) return;
-    setCompleted((prev) => new Set([...prev, activeVideo._id]));
-    // Auto-advance to next video
+    await markCompleteInDB(activeVideo._id);
     const idx = videos.findIndex((v) => v._id === activeVideo._id);
     if (idx < videos.length - 1) setActiveVideo(videos[idx + 1]);
+  };
+
+  // ─── Next lesson button ───────────────────────────────────────────────────
+  const handleNext = async () => {
+    const idx = videos.findIndex((v) => v._id === activeVideo._id);
+    await markCompleteInDB(activeVideo._id);
+    setActiveVideo(videos[idx + 1]);
+  };
+
+  // ─── Complete course button ───────────────────────────────────────────────
+  const handleComplete = async () => {
+    await markCompleteInDB(activeVideo._id);
   };
 
   const formatDuration = (secs) => {
@@ -51,9 +104,9 @@ function CoursePlayer({ enrollment, user, setPage }) {
     return `${m}:${String(s).padStart(2, "0")}`;
   };
 
-  const progressPercent = videos.length
+  const displayProgress = videos.length
     ? Math.round((completed.size / videos.length) * 100)
-    : 0;
+    : progressPercent;
 
   if (!course) {
     return (
@@ -139,7 +192,7 @@ function CoursePlayer({ enrollment, user, setPage }) {
                 fontWeight: 600,
               }}
             >
-              {progressPercent}%
+              {displayProgress}%
             </span>
           </div>
           <div
@@ -152,7 +205,7 @@ function CoursePlayer({ enrollment, user, setPage }) {
             <div
               style={{
                 height: "100%",
-                width: `${progressPercent}%`,
+                width: `${displayProgress}%`,
                 background:
                   "linear-gradient(90deg, var(--terracotta), var(--gold))",
                 borderRadius: 2,
@@ -210,7 +263,6 @@ function CoursePlayer({ enrollment, user, setPage }) {
                     e.currentTarget.style.background = "transparent";
                 }}
               >
-                {/* Status icon */}
                 <div
                   style={{
                     width: 28,
@@ -291,7 +343,6 @@ function CoursePlayer({ enrollment, user, setPage }) {
       >
         {activeVideo ? (
           <>
-            {/* Video player */}
             <div style={{ background: "#000", position: "relative" }}>
               <video
                 ref={videoRef}
@@ -304,7 +355,6 @@ function CoursePlayer({ enrollment, user, setPage }) {
               />
             </div>
 
-            {/* Video info */}
             <div style={{ flex: 1, overflowY: "auto", padding: "28px 36px" }}>
               <div
                 style={{
@@ -341,25 +391,20 @@ function CoursePlayer({ enrollment, user, setPage }) {
                     </span>
                   </div>
                 </div>
+
                 {/* Next lesson button */}
                 {videos.findIndex((v) => v._id === activeVideo._id) <
                   videos.length - 1 && (
                   <button
                     className="btn-primary"
                     style={{ padding: "9px 20px", fontSize: 13, flexShrink: 0 }}
-                    onClick={() => {
-                      const idx = videos.findIndex(
-                        (v) => v._id === activeVideo._id,
-                      );
-                      setCompleted(
-                        (prev) => new Set([...prev, activeVideo._id]),
-                      );
-                      setActiveVideo(videos[idx + 1]);
-                    }}
+                    onClick={handleNext}
                   >
                     Next Lesson →
                   </button>
                 )}
+
+                {/* Complete course button */}
                 {videos.findIndex((v) => v._id === activeVideo._id) ===
                   videos.length - 1 && (
                   <button
@@ -368,12 +413,9 @@ function CoursePlayer({ enrollment, user, setPage }) {
                       padding: "9px 20px",
                       fontSize: 13,
                       background: "var(--forest)",
+                      flexShrink: 0,
                     }}
-                    onClick={() => {
-                      setCompleted(
-                        (prev) => new Set([...prev, activeVideo._id]),
-                      );
-                    }}
+                    onClick={handleComplete}
                   >
                     ✓ Complete Course
                   </button>
@@ -394,14 +436,14 @@ function CoursePlayer({ enrollment, user, setPage }) {
               )}
 
               {/* Completion celebration */}
-              {progressPercent === 100 && (
+              {displayProgress === 100 && (
                 <div
                   style={{
                     marginTop: 28,
                     padding: "24px 28px",
                     borderRadius: 12,
                     background:
-                      "linear-gradient(135deg, rgba(var(--terracotta-rgb),0.15), rgba(212,175,55,0.1))",
+                      "linear-gradient(135deg, rgba(196,92,58,0.15), rgba(212,175,55,0.1))",
                     border: "1px solid rgba(212,175,55,0.3)",
                   }}
                 >
@@ -417,8 +459,8 @@ function CoursePlayer({ enrollment, user, setPage }) {
                     Course Complete!
                   </h3>
                   <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
-                    You've finished all lessons in {course.title}. Your
-                    certificate is on its way.
+                    You've finished all lessons in {course.title}. An admin will
+                    review and issue your certificate shortly.
                   </p>
                   <button
                     className="btn-primary"
