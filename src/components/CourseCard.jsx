@@ -1,10 +1,6 @@
 import React from "react"
 import StarRating from "../shared/StarRating";
 
-
-
-
-
 function CourseCard({ course, onEnroll }) {
   return (
     <div className="card" style={{ cursor: "pointer" }}>

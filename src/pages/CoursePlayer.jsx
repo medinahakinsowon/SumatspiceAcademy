@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const API_URL = "http://localhost:4000/api";
+// const API_URL = "http://localhost:4000/api";
 
 function CoursePlayer({ enrollment, user, setPage }) {
   const [videos, setVideos] = useState([]);
@@ -9,6 +9,7 @@ function CoursePlayer({ enrollment, user, setPage }) {
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(new Set());
   const [progressPercent, setProgressPercent] = useState(0);
+  const [videoOrientation, setVideoOrientation] = useState("landscape");
   const videoRef = useRef();
 
   const course = enrollment?.course;
@@ -20,9 +21,12 @@ function CoursePlayer({ enrollment, user, setPage }) {
       setLoading(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`${API_URL}/videos/course/${course._id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL}/videos/course/${course._id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message);
         const vids = data.data.videos;
@@ -48,6 +52,18 @@ function CoursePlayer({ enrollment, user, setPage }) {
     fetchVideos();
   }, [course?._id]);
 
+  const handleVideoMetadata = (e) => {
+    const video = e.currentTarget;
+
+    if (video.videoWidth > video.videoHeight) {
+      setVideoOrientation("landscape");
+    } else if (video.videoHeight > video.videoWidth) {
+      setVideoOrientation("portrait");
+    } else {
+      setVideoOrientation("square");
+    }
+  };
+
   // ─── Save progress to DB ──────────────────────────────────────────────────
   const markCompleteInDB = async (videoId) => {
     // Update local state immediately for instant UI feedback
@@ -59,14 +75,17 @@ function CoursePlayer({ enrollment, user, setPage }) {
         ? Math.floor(videoRef.current.currentTime)
         : 0;
 
-      const res = await fetch(`${API_URL}/videos/${videoId}/complete`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/videos/${videoId}/complete`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ watchedSecs }),
         },
-        body: JSON.stringify({ watchedSecs }),
-      });
+      );
 
       const data = await res.json();
       if (res.ok) {
@@ -343,15 +362,44 @@ function CoursePlayer({ enrollment, user, setPage }) {
       >
         {activeVideo ? (
           <>
-            <div style={{ background: "#000", position: "relative" }}>
+            {/* Replace the video container and video tag in CoursePlayer.jsx with this */}
+
+            {/* Video container — forces landscape/widescreen display */}
+            <div
+              style={{
+                width: "100%",
+                background: "#000",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                overflow: "hidden",
+
+                // Landscape gets a larger viewing area
+                height: videoOrientation === "portrait" ? "65vh" : "65vh",
+              }}
+            >
               <video
                 ref={videoRef}
                 key={activeVideo._id}
-                src={activeVideo.filePath}
+                src={
+                  activeVideo.filePath?.startsWith("http")
+                    ? activeVideo.filePath
+                    : `http://localhost:4000${activeVideo.filePath}`
+                }
                 poster={activeVideo.thumbnail}
                 controls
+                onLoadedMetadata={handleVideoMetadata}
                 onEnded={handleVideoEnd}
-                style={{ width: "100%", maxHeight: "62vh", display: "block" }}
+                style={{
+                  display: "block",
+                  height: "100%",
+                  width: "100%",
+                  objectFit: "contain",
+                  background: "#000",
+
+                  // Automatically limit portrait videos
+                  maxWidth: videoOrientation === "portrait" ? "500px" : "100%",
+                }}
               />
             </div>
 

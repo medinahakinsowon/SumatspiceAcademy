@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 
+
+//base url
 const API_URL = "http://localhost:4000/api";
 
 function RegisterModal({ onClose, onRegister, switchToLogin }) {
@@ -24,7 +26,7 @@ function RegisterModal({ onClose, onRegister, switchToLogin }) {
     setLoading(true);
 
     try {
-      // ─── POST /api/auth/register ────────────────────────────────────────
+      // ─── POST   /auth/register ────────────────────────────────────────
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
