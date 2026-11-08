@@ -8,7 +8,7 @@ import AboutPage from "./pages/AboutPage";
 import Dashboard from "./pages/Dashboard";
 import CoursePage from "./pages/CoursePage";
 import CoursePlayer from "./pages/CoursePlayer";
-import AdminPanel from "./pages/AdminPanel";
+import AdminPanel from "./pages/Adminpanel";
 import Navbar from "./shared/Navbar";
 
 import { css } from "./utils/MockData";
