@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const API_URL = "http://localhost:4000/api";
+const API_URL = "https://academy-db.vercel.app/api/";
 
 const loadPaystackScript = () =>
   new Promise((resolve) => {

@@ -20,7 +20,7 @@ function CoursePage({ setShowRegister, user, setPage, onEnroll }) {
       try {
         const params = filter !== "All" ? `?level=${filter}` : "";
         const res = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL}/courses${params}`,
+          `${import.meta.env.API_BASE_URL}/courses${params}`,
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Failed to load courses.");

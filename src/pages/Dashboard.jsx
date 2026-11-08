@@ -3,7 +3,7 @@ import Avatar from "../shared/Avatar";
 
 import CertificateView from "../components/CertificateView"
 
-const API_URL = "http://localhost:4000/api";
+const API_URL = "https://academy-db.vercel.app/api/";
 
 function Dashboard({ user, setPage, logout, openPlayer }) {
   const [active, setActive] = useState("overview");

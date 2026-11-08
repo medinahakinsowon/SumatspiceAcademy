@@ -13,7 +13,7 @@ import Navbar from "./shared/Navbar";
 
 import { css } from "./utils/MockData";
 
-const API_URL = "http://localhost:4000/api";
+const API_URL = "https://academy-db.vercel.app/api";
 
 function App() {
   const [user, setUser] = useState(null);
