@@ -2,7 +2,7 @@ import React, { useState } from "react";
 
 
 //base url
-const API_URL = "https://academy-db.vercel.app/api/";
+const API_URL = "https://academy-db.vercel.app/api";
 
 function RegisterModal({ onClose, onRegister, switchToLogin }) {
   const [form, setForm] = useState({ name: "", email: "", pass: "" });

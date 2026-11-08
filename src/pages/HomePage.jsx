@@ -4,7 +4,7 @@ import CourseCard from "../components/CourseCard";
 import Avatar from "../shared/Avatar";
 import { STATS, TESTIMONIALS } from "../utils/MockData";
 
-const API_URL = "https://academy-db.vercel.app/api/";
+const API_URL = "https://academy-db.vercel.app/api";
 
 function HomePage({ setPage, setShowRegister, onEnroll }) {
   const [featuredCourses, setFeaturedCourses] = useState([]);
