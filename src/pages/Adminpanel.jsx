@@ -1,7 +1,7 @@
 import CertificateView from "./../components/CertificateView.jsx";
 import React, { useState, useEffect, useRef } from "react";
 
-const API_URL = "http://localhost:4000/api";
+const API_URL = "https://academy-db.vercel.app/api";
 
 const api = (path, options = {}) => {
   const token = localStorage.getItem("token");

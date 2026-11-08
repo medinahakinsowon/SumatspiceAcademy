@@ -5,9 +5,6 @@ import Footer from "../shared/Footer";
 
 
 
-
-
-
 function AboutPage({ setShowRegister }) {
   return (
     <div>
