@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import CourseCard from "../components/CourseCard";
 import Footer from "../shared/Footer";
 
-// const API_URL = "http://localhost:4000/api";
+const API_URL = "https://academy-db.vercel.app/api";
 
 function CoursePage({ setShowRegister, user, setPage, onEnroll }) {
   const [filter, setFilter] = useState("All");
@@ -20,7 +20,7 @@ function CoursePage({ setShowRegister, user, setPage, onEnroll }) {
       try {
         const params = filter !== "All" ? `?level=${filter}` : "";
         const res = await fetch(
-          `${import.meta.env.API_BASE_URL}/courses${params}`,
+          `${API_URL}/courses${params}`,
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || "Failed to load courses.");
